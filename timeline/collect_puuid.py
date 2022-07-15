@@ -6,7 +6,8 @@ import time, re, json
 from tqdm import tqdm
 
 region = "kr"
-api_key = "RGAPI-e3bf5808-3d42-4605-b4be-7ef2d2a4d962"
+api_key = ""
+# api_key = "RGAPI-e3bf5808-3d42-4605-b4be-7ef2d2a4d962"
 
 seed_id = ["duimianxiaodai", "fragiIe", "0o0OoO", "Happiness21", "adasdasdfaf", "doujianghuimian", "2639450511967776"]
 
