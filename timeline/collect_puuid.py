@@ -6,10 +6,11 @@ import time, re, json
 from tqdm import tqdm
 
 region = "kr"
-api_key = ""
+api_key = "RGAPI-6329a2ac-a7b3-42a1-9b47-0ee799c6f2c8"
 # api_key = "RGAPI-e3bf5808-3d42-4605-b4be-7ef2d2a4d962"
 
-seed_id = ["duimianxiaodai", "fragiIe", "0o0OoO", "Happiness21", "adasdasdfaf", "doujianghuimian", "2639450511967776"]
+# seed_id = ["duimianxiaodai", "fragiIe", "0o0OoO", "Happiness21", "adasdasdfaf", "doujianghuimian", "2639450511967776"]
+seed_id = ["JUGKING", "viper3", "MIDKING", "fatiaoahri", "ArkRuHa", "Rascal", "Tiancaishaonian", "Tar2an", "1zhangwukuaiqian", "tanoshiii"]
 
 
 def requestsLog(url, status, headers):
@@ -70,19 +71,43 @@ def saveFiles(match, visited, seed):
         json.dump(seed, fout)
 
 
+# for python 3.7 and above
+# puuid_seed = [asyncio.run(getSummonerId(name)) for name in seed_id]
 
-puuid_seed = [asyncio.run(getSummonerId(name)) for name in seed_id]
+
+# for python 3.6
+loop = asyncio.get_event_loop()
+puuid_seed = [loop.run_until_complete(getSummonerId(name)) for name in seed_id]
+# loop.close()
+###########################################
+
 matches = set()
 visited = set()
 ts = time.time()
 while puuid_seed and len(matches) < 10000:
     try:
         pl = puuid_seed.pop(0)
-        recent = asyncio.run(getRecentMatchlist(pl))
+
+        # for python 3.7 and above
+        # recent = asyncio.run(getRecentMatchlist(pl))
+
+        # for python 3.6
+        # loop = asyncio.get_event_loop()
+        recent = loop.run_until_complete(getRecentMatchlist(pl))
+        # loop.close()
+        ###################################################
+
         matches.update(recent)
         visited.add(pl)
         for m in recent:
-            participants = asyncio.run(getMatchRawData(m))["metadata"]["participants"]
+            # 
+            # participants = asyncio.run(getMatchRawData(m))["metadata"]["participants"]
+
+            # 
+            # loop = asyncio.get_event_loop()
+            participants = loop.run_until_complete(getMatchRawData(m))["metadata"]["participants"]
+            # loop.close()
+
             for p in participants:
                 if p not in visited and p not in puuid_seed:
                     puuid_seed.append(p)
@@ -90,7 +115,7 @@ while puuid_seed and len(matches) < 10000:
     except Exception as e:
         print(e)
         continue
-
+loop.close()
 te = time.time() - ts
 hh = te // 3600
 mm = (te % 3600) // 60
