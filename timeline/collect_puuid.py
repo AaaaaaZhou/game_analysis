@@ -115,7 +115,10 @@ while puuid_seed and len(matches) < 10000:
     except Exception as e:
         print(e)
         continue
+# for python 3.6, end asyncio event loop
 loop.close()
+
+
 te = time.time() - ts
 hh = te // 3600
 mm = (te % 3600) // 60
