@@ -11,7 +11,8 @@ from tqdm import tqdm
 test_MatchID = "KR_5702061589"
 
 region = "kr"
-api_key = "RGAPI-65a944e8-6beb-43c0-b063-236d15051a31"
+api_key = ""
+# api_key = "RGAPI-65a944e8-6beb-43c0-b063-236d15051a31"
 
 def requestsLog(url, status, headers):
     print(url)
