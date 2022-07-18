@@ -54,12 +54,67 @@ for id in matchIds:
     meta = tttt["meta"] # player, champion, position
 
     champs = [v[0] for _, v in meta.items()] # 10 participating champions
-    profiles = [pd.read_csv(champion_root + ch.lower() + ".csv").values.tolist() for ch in champs] # for every champ, use a list to record its info
+    # for every champ, use an ndarray to record its info
+    # drop first 2 columns: idx, ability_id
+    profiles = [pd.read_csv(champion_root + ch.lower() + ".csv").values[:, 2:] for ch in champs] 
 
-    status = [np.zeros(6, 56) for _ in range(10)] # for 10 champs, each has 6 item slots, feature dim is 56
-    
-    for frame in tttt["timeline"]["frames"]:
-        pass
+    status = [np.zeros(6, 56) for _ in range(10)] # for all 10 champs, each has 6 item slots, feature dim is 56
+    record_itemslot = {idx: [0, 0, 0, 0, 0, 0] for idx in range(1, 11)}
+
+    # participantsId: 1 ~ 10
+    for idx, frame in enumerate(tttt["timeline"]["info"]["frames"]):
+        # frame: dict_keys(['events', 'participantFrames', 'timestamp'])
+        for event in frame["events"]:
+            if event["type"] == "ITEM_PURCHASED":
+                itemId = event["itemId"]
+                participantId = event["participantId"]
+
+                item_info = all_items[itemId]
+                name = item_info["name"]
+                
+                path = item_root + name.lower() + ".csv"
+                if not os.path.exists(path):
+                    continue
+                item_val = pd.read_csv(path).values[0, 2:]
+
+                if "from" in item_info.keys():
+                    for ff in item_info["from"]:
+                        if ff in record_itemslot[participantId]:
+                            iiii = record_itemslot[participantId].index(ff)
+                            status[participantId - 1][iiii] = 0
+                            record_itemslot[participantId] = 0
+                iiii = record_itemslot[participantId].index(0)
+                status[participantId - 1][iiii] = item_val
+                record_itemslot[participantId][iiii] = itemId
+
+            elif event["type"] == "ITEM_UNDO":
+                participantId = event["participantId"]
+                beforeId = event["beforeId"]
+                afterId = event["afterId"]
+
+                if beforeId in record_itemslot[participantId]:
+                    iiii = record_itemslot[participantId].index(beforeId)
+                    status[participantId - 1][iiii] = 0
+                    record_itemslot[participantId][iiii] = 0
+                if afterId == 0:
+                    continue
+
+                item_info = all_items[afterId]
+                name = item_info["name"]
+
+                path = item_root + name.lower() + ".csv"
+                if not os.path.exists(path):
+                    continue
+                item_val = pd.read_csv(path).values[0, 2:]
+
+                iiii = record_itemslot[participantId].index(0)
+                status[participantId - 1][iiii] = item_val
+                record_itemslot[participantId][iiii] = afterId
+            
+            elif event["type"] == "ITEM_DESTROYED" or "ITEM_SOLD":
+                pass
+            elif event["type"] == "SKILL_LEVEL_UP":
+                pass
 
         
 
