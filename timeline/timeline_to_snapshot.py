@@ -1,5 +1,6 @@
 # for each timeline, read and parse it to snapshots of the game
 
+from sqlite3 import Timestamp
 from riot_api import ApiCaller
 import asyncio
 
@@ -50,6 +51,8 @@ item_root = "../src/item/en/"
 
 loop = asyncio.get_event_loop()
 for id in matchIds:
+    SAVE_SNAPSHOTS = []
+
     tttt = loop.run_until_complete(getTimeline(id)) # json file
     meta = tttt["meta"] # player, champion, position
 
@@ -58,13 +61,20 @@ for id in matchIds:
     # drop first 2 columns: idx, ability_id
     profiles = [pd.read_csv(champion_root + ch.lower() + ".csv").values[:, 2:] for ch in champs] 
 
-    status = [np.zeros(6, 56) for _ in range(10)] # for all 10 champs, each has 6 item slots, feature dim is 56
     record_itemslot = {idx: [0, 0, 0, 0, 0, 0] for idx in range(1, 11)}
+    record_skillslot = {idx: [0, 0, 0, 0] for idx in range(1, 11)}
+
+    # initial champion status with 6 item slots and an innate passive ability
+    status = [np.zeros((6, 56)) for _ in range(10)] # for all 10 champs, each has 6 item slots, feature dim is 56
+    for idx, pf in enumerate(profiles):
+        passive = pf[0, :]
+        status[idx] = np.row_stack((status[idx], passive))
 
     # participantsId: 1 ~ 10
     for idx, frame in enumerate(tttt["timeline"]["info"]["frames"]):
         # frame: dict_keys(['events', 'participantFrames', 'timestamp'])
         for event in frame["events"]:
+            time_stamp = event["timestamp"]
             if event["type"] == "ITEM_PURCHASED":
                 itemId = event["itemId"]
                 participantId = event["participantId"]
@@ -112,12 +122,48 @@ for id in matchIds:
                 record_itemslot[participantId][iiii] = afterId
             
             elif event["type"] == "ITEM_DESTROYED" or "ITEM_SOLD":
+                participantId = event["participantId"]
+                itemId = event["itemId"]
+
+                iiii = record_itemslot[participantId].index(itemId)
+                record_itemslot[participantId][iiii] = 0
+                status[participantId - 1][iiii] = 0
+            
+            elif event["type"] == "WARD_PLACED":
                 pass
+
             elif event["type"] == "SKILL_LEVEL_UP":
-                pass
+                participantId = event["participantId"]
+                skill_slot = event["skillSlot"]
 
-        
+                n_rows = profiles[participantId - 1].shape[0]
+                if n_rows == 5:
+                    status[participantId - 1] = np.row_stack((status[participantId - 1], profiles[participantId - 1][skill_slot, :]))
+                
+                elif n_rows == 8:
+                    if skill_slot == 4:
+                        status[participantId - 1] = np.row_stack((status[participantId - 1], profiles[participantId - 1][skill_slot, :]))
+                    else:
+                        status[participantId - 1] = np.row_stack((status[participantId - 1], profiles[participantId - 1][skill_slot*2-1: skill_slot*2+1, :]))
 
+                elif n_rows == 9:
+                    if skill_slot == 4:
+                        status[participantId - 1] = np.row_stack((status[participantId - 1], profiles[participantId - 1][skill_slot, :]))
+                    else:
+                        status[participantId - 1] = np.row_stack((status[participantId - 1], profiles[participantId - 1][skill_slot*2: skill_slot*2+2, :]))
+
+                else:
+                    print(champs[participantId - 1], id, time_stamp)
+                    continue
+
+            elif event["type"] == "GAME_END":
+                winner = event["winningTeam"]
+                # winner == 100 -> team 1 wins
+                # winner == 200 -> team 2 wins
+            # save snapshot
+        SAVE_SNAPSHOTS.append(status)
+    with open("data/snapshot/" + str(id) + ".json", 'w') as fout:
+        json.dump((winner, SAVE_SNAPSHOTS), fout)
 
 loop.close()
 
