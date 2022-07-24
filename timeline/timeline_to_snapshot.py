@@ -15,7 +15,7 @@ def requestsLog(url, status, headers):
     print(headers)
 
 region = "kr"
-api_key = ""
+api_key = "RGAPI-aca3c461-5640-4da7-ba23-9ccb4b0ca04a"
 panth = ApiCaller(region, api_key, errorHandling=True, requestsLoggingFunction=requestsLog, debug=True)
 
 
@@ -61,6 +61,8 @@ for id in tqdm(matchIds[:1000]):
 
     tttt = loop.run_until_complete(getTimeline(id)) # json file
     meta = tttt["meta"] # player, champion, position
+    # 要用https://developer.riotgames.com/apis#match-v5/GET_getMatch这个api去确定每个人都用的什么英雄
+    # champion name的部分需要小改
 
     champs = [v[0] for _, v in meta.items()] # 10 participating champions
     # for every champ, use an ndarray to record its info
