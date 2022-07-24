@@ -1,6 +1,5 @@
 # for each timeline, read and parse it to snapshots of the game
 
-from sqlite3 import Timestamp
 from riot_api import ApiCaller
 import asyncio
 
@@ -39,6 +38,13 @@ def init_champ_status(): # use a ndarray to record
     result = np.zeros((6, 56)) # 6 item slots, 56d features
 
 
+def pprint(itemslot, check):
+    for k in range(1, 11):
+        v = itemslot[k]
+        rubbish = [check[str(id)]["name"] if id!=0 else 0 for id in v]
+        print(rubbish)
+
+
 with open("data/matchIds.json") as fin:
     matchIds = json.load(fin)
 with open("item.json") as fin:
@@ -50,7 +56,7 @@ champion_root = "../src/champ/en_nv/"
 item_root = "../src/item/en/"
 
 loop = asyncio.get_event_loop()
-for id in matchIds:
+for id in tqdm(matchIds[:1000]):
     SAVE_SNAPSHOTS = []
 
     tttt = loop.run_until_complete(getTimeline(id)) # json file
@@ -61,11 +67,11 @@ for id in matchIds:
     # drop first 2 columns: idx, ability_id
     profiles = [pd.read_csv(champion_root + ch.lower() + ".csv").values[:, 2:] for ch in champs] 
 
-    record_itemslot = {idx: [0, 0, 0, 0, 0, 0] for idx in range(1, 11)}
+    record_itemslot = {idx: [0, 0, 0, 0, 0, 0, 0] for idx in range(1, 11)} # 6 item slots, and 1 trinket slot
     record_skillslot = {idx: [0, 0, 0, 0] for idx in range(1, 11)}
 
-    # initial champion status with 6 item slots and an innate passive ability
-    status = [np.zeros((6, 56)) for _ in range(10)] # for all 10 champs, each has 6 item slots, feature dim is 56
+    # initial champion status with 6 item slots and an innate passive ability <- add 1 trinket slot
+    status = [np.zeros((7, 56)) for _ in range(10)] # for all 10 champs, each has 6 item slots, 1 trinket slot, feature dim is 56
     for idx, pf in enumerate(profiles):
         passive = pf[0, :]
         status[idx] = np.row_stack((status[idx], passive))
@@ -79,10 +85,10 @@ for id in matchIds:
                 itemId = event["itemId"]
                 participantId = event["participantId"]
 
-                item_info = all_items[itemId]
+                item_info = all_items[str(itemId)]
                 name = item_info["name"]
                 
-                path = item_root + name.lower() + ".csv"
+                path = item_root + name.replace(" ", "_").lower() + ".csv"
                 if not os.path.exists(path):
                     continue
                 item_val = pd.read_csv(path).values[0, 2:]
@@ -109,10 +115,10 @@ for id in matchIds:
                 if afterId == 0:
                     continue
 
-                item_info = all_items[afterId]
+                item_info = all_items[str(afterId)]
                 name = item_info["name"]
 
-                path = item_root + name.lower() + ".csv"
+                path = item_root + name.replace(" ", "_").lower() + ".csv"
                 if not os.path.exists(path):
                     continue
                 item_val = pd.read_csv(path).values[0, 2:]
@@ -121,13 +127,14 @@ for id in matchIds:
                 status[participantId - 1][iiii] = item_val
                 record_itemslot[participantId][iiii] = afterId
             
-            elif event["type"] == "ITEM_DESTROYED" or "ITEM_SOLD":
+            elif event["type"] == "ITEM_DESTROYED" or event["type"] == "ITEM_SOLD":
                 participantId = event["participantId"]
                 itemId = event["itemId"]
 
-                iiii = record_itemslot[participantId].index(itemId)
-                record_itemslot[participantId][iiii] = 0
-                status[participantId - 1][iiii] = 0
+                if itemId in record_itemslot[participantId]:
+                    iiii = record_itemslot[participantId].index(itemId)
+                    record_itemslot[participantId][iiii] = 0
+                    status[participantId - 1][iiii] = 0
             
             elif event["type"] == "WARD_PLACED":
                 pass
