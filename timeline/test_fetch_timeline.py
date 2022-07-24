@@ -13,7 +13,7 @@ def requestsLog(url, status, headers):
     print(headers)
 
 region = "kr"
-api_key = "RGAPI-aca3c461-5640-4da7-ba23-9ccb4b0ca04a"
+api_key = ""
 panth = ApiCaller(region, api_key, errorHandling=True, requestsLoggingFunction=requestsLog, debug=True)
 
 
@@ -61,7 +61,7 @@ print(tttt["metadata"])
 print("================================")
 
 print(tttt["info"].keys())
-print(tttt["info"]["frames"].keys())
+print(tttt["info"]["frames"])
 
 loop.close()
 
