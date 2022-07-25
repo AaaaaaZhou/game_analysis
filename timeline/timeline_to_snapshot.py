@@ -187,6 +187,7 @@ for mid in matchIds[:1000]:
             # save snapshot
         temp = [ar.tolist() for ar in status]
         SAVE_SNAPSHOTS.append(temp)
+        time.sleep(1)
     with open("data/snapshot/" + str(mid) + ".json", 'w') as fout:
         # SAVE_SNAPSHOTS = convert_to_full_list(SAVE_SNAPSHOTS)
         json.dump((winner, SAVE_SNAPSHOTS), fout)
