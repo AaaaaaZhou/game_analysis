@@ -15,7 +15,7 @@ def requestsLog(url, status, headers):
     print(headers)
 
 region = "kr"
-api_key = "RGAPI-aca3c461-5640-4da7-ba23-9ccb4b0ca04a"
+api_key = "RGAPI-37e88f89-41a5-4f03-bf85-b888f83d14bf"
 panth = ApiCaller(region, api_key, errorHandling=True, requestsLoggingFunction=requestsLog, debug=True)
 
 
@@ -63,13 +63,13 @@ all_items = items["data"] # dict: {item_id: {name:, description:, colloq:, ....}
 with open("champion.json", encoding="utf-8") as fin:
     check_champions = json.load(fin)
     check_champions = check_champions["data"]
-    check_champions = {k: v["name"].replace(" ", "_").lower() for k, v in check_champions.items()}
+    check_champions = {k.lower(): v["name"].replace(" ", "_").lower() for k, v in check_champions.items()}
 
 champion_root = "../src/champ/en_nv/"
 item_root = "../src/item/en/"
 
 loop = asyncio.get_event_loop()
-for mid in matchIds[:1]:
+for mid in matchIds[:1000]:
     SAVE_SNAPSHOTS = []
 
     mmmm = loop.run_until_complete(getMatchRawData(mid))
@@ -82,7 +82,7 @@ for mid in matchIds[:1]:
     # champs = [v[0] for _, v in meta.items()] # 10 participating champions
     # for every champ, use an ndarray to record its info
     # drop first 2 columns: idx, ability_id
-    profiles = [pd.read_csv(champion_root + check_champions[ch] + ".csv").values[:, 2:] for ch in champs] 
+    profiles = [pd.read_csv(champion_root + check_champions[ch.lower()] + ".csv").values[:, 2:] for ch in champs] 
 
     record_itemslot = {idx: [0, 0, 0, 0, 0, 0, 0] for idx in range(1, 11)} # 6 item slots, and 1 trinket slot
     record_skillslot = {idx: [0, 0, 0, 0] for idx in range(1, 11)}
