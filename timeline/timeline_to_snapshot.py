@@ -1,6 +1,5 @@
 # for each timeline, read and parse it to snapshots of the game
 
-from nis import match
 from riot_api import ApiCaller
 import asyncio
 
@@ -16,7 +15,7 @@ def requestsLog(url, status, headers):
     print(headers)
 
 region = "kr"
-api_key = ""
+api_key = "RGAPI-aca3c461-5640-4da7-ba23-9ccb4b0ca04a"
 panth = ApiCaller(region, api_key, errorHandling=True, requestsLoggingFunction=requestsLog, debug=True)
 
 
@@ -46,6 +45,15 @@ def pprint(itemslot, check):
         print(rubbish)
 
 
+def convert_to_full_list(record):
+    # convert the ndarray in recording list so that it can be saved as json
+    for idx, ar in enumerate(record):
+        if isinstance(ar, list):
+            convert_to_full_list(ar)
+        elif isinstance(ar, np.ndarray):
+            record[idx] = list(ar)
+
+
 with open("data/matchIds.json") as fin:
     matchIds = json.load(fin)
 random.shuffle(matchIds)
@@ -61,12 +69,12 @@ champion_root = "../src/champ/en_nv/"
 item_root = "../src/item/en/"
 
 loop = asyncio.get_event_loop()
-for mid in tqdm(matchIds[:1]):
+for mid in matchIds[:1]:
     SAVE_SNAPSHOTS = []
 
     mmmm = loop.run_until_complete(getMatchRawData(mid))
     tttt = loop.run_until_complete(getTimeline(mid)) # json file
-    meta = tttt["meta"] # player, champion, position
+    # meta = tttt["meta"] # player, champion, position
     # 要用https://developer.riotgames.com/apis#match-v5/GET_getMatch这个api去确定每个人都用的什么英雄
     # champion name的部分需要小改 # 已改
     champs = [partic["championName"] for partic in mmmm["info"]["participants"]]
@@ -177,8 +185,10 @@ for mid in tqdm(matchIds[:1]):
                 # winner == 100 -> team 1 wins
                 # winner == 200 -> team 2 wins
             # save snapshot
-        SAVE_SNAPSHOTS.append(status)
-    with open("data/snapshot/" + str(id) + ".json", 'w') as fout:
+        temp = [ar.tolist() for ar in status]
+        SAVE_SNAPSHOTS.append(temp)
+    with open("data/snapshot/" + str(mid) + ".json", 'w') as fout:
+        # SAVE_SNAPSHOTS = convert_to_full_list(SAVE_SNAPSHOTS)
         json.dump((winner, SAVE_SNAPSHOTS), fout)
 
 loop.close()
