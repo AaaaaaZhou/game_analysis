@@ -1,9 +1,10 @@
 # for each timeline, read and parse it to snapshots of the game
 
+from nis import match
 from riot_api import ApiCaller
 import asyncio
 
-import time, re, os, json
+import time, re, os, json, random
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
@@ -47,27 +48,33 @@ def pprint(itemslot, check):
 
 with open("data/matchIds.json") as fin:
     matchIds = json.load(fin)
+random.shuffle(matchIds)
 with open("item.json") as fin:
     items = json.load(fin)
 all_items = items["data"] # dict: {item_id: {name:, description:, colloq:, ....}, }
-
+with open("champion.json", encoding="utf-8") as fin:
+    check_champions = json.load(fin)
+    check_champions = check_champions["data"]
+    check_champions = {k: v["name"].replace(" ", "_").lower() for k, v in check_champions.items()}
 
 champion_root = "../src/champ/en_nv/"
 item_root = "../src/item/en/"
 
 loop = asyncio.get_event_loop()
-for id in tqdm(matchIds[:1000]):
+for mid in tqdm(matchIds[:1]):
     SAVE_SNAPSHOTS = []
 
-    tttt = loop.run_until_complete(getTimeline(id)) # json file
+    mmmm = loop.run_until_complete(getMatchRawData(mid))
+    tttt = loop.run_until_complete(getTimeline(mid)) # json file
     meta = tttt["meta"] # player, champion, position
     # 要用https://developer.riotgames.com/apis#match-v5/GET_getMatch这个api去确定每个人都用的什么英雄
-    # champion name的部分需要小改
+    # champion name的部分需要小改 # 已改
+    champs = [partic["championName"] for partic in mmmm["info"]["participants"]]
 
-    champs = [v[0] for _, v in meta.items()] # 10 participating champions
+    # champs = [v[0] for _, v in meta.items()] # 10 participating champions
     # for every champ, use an ndarray to record its info
     # drop first 2 columns: idx, ability_id
-    profiles = [pd.read_csv(champion_root + ch.lower() + ".csv").values[:, 2:] for ch in champs] 
+    profiles = [pd.read_csv(champion_root + check_champions[ch] + ".csv").values[:, 2:] for ch in champs] 
 
     record_itemslot = {idx: [0, 0, 0, 0, 0, 0, 0] for idx in range(1, 11)} # 6 item slots, and 1 trinket slot
     record_skillslot = {idx: [0, 0, 0, 0] for idx in range(1, 11)}
@@ -79,7 +86,7 @@ for id in tqdm(matchIds[:1000]):
         status[idx] = np.row_stack((status[idx], passive))
 
     # participantsId: 1 ~ 10
-    for idx, frame in enumerate(tttt["timeline"]["info"]["frames"]):
+    for idx, frame in enumerate(tttt["info"]["frames"]):
         # frame: dict_keys(['events', 'participantFrames', 'timestamp'])
         for event in frame["events"]:
             time_stamp = event["timestamp"]
